@@ -1,0 +1,7 @@
+archive: 'quant-ph'
+include_abstract: True
+threshold: 5
+
+keywords_file: 'keywords.txt'
+slack_channel: '#testbot'
+post_hour: '8:30'

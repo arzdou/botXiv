@@ -1,0 +1,73 @@
+tomography, 2
+quantum, 1
+quantum system, 2
+quantum control, 2
+optimal control, 2
+cavity qed, 4
+quantum device, 3
+Purcell, 4 
+dicke, 2
+superradiance, 2
+superconducting quantum, 2
+superconducting qubit, 2
+microwave, 1
+RF, 1
+waveguide qed, 2
+circuit qed, 2
+nano MRI, 10
+ESR, 4
+electron spin resonance, 4
+electron paramagnetic resonance, 4
+spin, 1
+spin qubit, 2
+coherence, 1
+two level system, 1
+CNOT, 1
+CZ, 1
+CPHASE, 1
+dephasing, 1
+quantum processor, 1
+quantum simulation, 1
+NISQ device, 1
+quantum chemistry, 1
+gate fidelity, 1
+microwave photon, 1
+flux noise, 1
+TLS, 1
+josephson junction, 1
+transmon, 3
+fluxonium, 2
+cat state, 2
+cat qubit, 2
+quantum memory, 6
+quantum ram, 5
+coplanar waveguide, 3
+qubit, 1
+qutrit, 1
+qudit, 1
+Devoret, 10
+Bertet, 10
+Flurin, 10
+Schoelkopf, 10
+Lukin, 10
+Wallraff, 10
+Morton, 5
+Bienfait, 10
+Di Carlo, 10
+Jianwei, 5
+Heinsoo, 6
+Huard, 8
+Nakamura, 10
+Schuster, 10
+Cleland, 10
+Oliver, 10
+Painter, 10
+Siddiqi, 8
+Thompson, 8
+Daifei, 10
+Scarlino, 5
+Mølmer, 10
+Faraon, 10
+Gasparinetti, 10
+Martinis, 10
+Troyer, 10
