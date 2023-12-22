@@ -5,7 +5,7 @@
 In order to run it you must first download the script and install the required dependencies in a new environment:
 
 ```
-git clone ___
+git clone https://github.com/arzdou/botXiv.git
 pip install -r botVix/requirements.txt
 ```
 
