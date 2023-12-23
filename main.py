@@ -20,7 +20,7 @@ from slack_sdk.errors import SlackApiError
 import requests, yaml, csv, datetime, schedule, logging, os
 
 
-with open("config.yaml", 'r') as f:
+with open("config.yaml", 'r', encoding='utf-8') as f:
     CONFIG = yaml.load(f, Loader=yaml.Loader)  
 
 
@@ -28,23 +28,22 @@ def load_keywords() -> dict:
     """Function that loads a csv with structure 'keyword, int\n' and saves them as a dict"""
     filename = CONFIG["keywords_file"]
     try:
-        with open(filename, 'r') as f:
+        with open(filename, 'r', encoding='utf-8') as f:
             out = list(csv.reader(f, delimiter=","))
     except Exception as e:
         logging.warning('Error when opening the keyword file: ', e)
         logging.info('Loading backup')
-        with open('keywords.backup', 'r') as f:
+        with open('keywords.backup', 'r', encoding='utf-8') as f:
             out = list(csv.reader(f, delimiter=","))
     
     # After succesfully loading create a backup
-    with open('keywords.backup', 'w') as f:
+    with open('keywords.backup', 'w', encoding='utf-8') as f:
         f.write('\n'.join([', '.join(o) for o in out]))
-
     return {o[0].lower(): int(o[1]) for o in out}
 
 
 def send_slack_message(filename: str):
-    with open(filename, 'r') as f:
+    with open(filename, 'r', encoding='utf-8') as f:
         msg = f.read()
 
     client = WebClient(token=os.environ.get("SLACK_BOT_TOKEN"))
@@ -132,7 +131,11 @@ def write_summary():
     Paper.KEYWORDS = load_keywords()
 
     # Send a request to ArXiv for yesterdays papers
-    yesterday = datetime.date.today() - datetime.timedelta(days=1)
+    yesterday = datetime.date.today() - datetime.timedelta(days=0)
+    if yesterday.weekday() >= 5:
+        logging.info("No papers during the weekend")
+        return 0
+    
     payload = {
         "MIME Type": "application/x-www-form-urlencoded",
         "archive": CONFIG["archive"],
@@ -143,7 +146,7 @@ def write_summary():
     }
     r = requests.get("https://arxiv.org/catchup", params=payload)
     soup_yesterday = BeautifulSoup(r.text, features="html.parser").find('h2').findNext('dl')
-
+    
     # Get the references of the paper and create a Paper object for each one of them. 
     # Then if the paper is relevant add an entry to the markdown list
     papers = []
@@ -159,15 +162,17 @@ def write_summary():
     if not os.path.exists('summaries'): os.makedirs('summaries')
     md_text = '\n\n-----------------------\n\n'.join(md_list)
     md_file = f"summaries/{yesterday.day}_{yesterday.month}_{yesterday.year}.md"
-    with open(md_file, "w") as f:
+    with open(md_file, "w", encoding='utf-8') as f:
         f.write(md_text)
     
     logging.info(f"Found {len(papers)} relevant papers.")
     logging.info(f"Markdown file was saved at {md_file}.md")
 
     send_slack_message(md_file)
+    return 0
 
 if __name__ == "__main__":
+    #write_summary()
     schedule.every().day.at(CONFIG['post_hour']).do(write_summary)
     while True:
         schedule.run_pending()

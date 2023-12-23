@@ -1,2 +1,5 @@
+requests>=2.31
 bs4>=4.12
 schedule>=1.2.1
+slack_sdk>=3.26
+pyyaml>=6.0
