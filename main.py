@@ -19,9 +19,11 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 import requests, yaml, csv, datetime, schedule, logging, os
 
-
 with open("config.yaml", 'r', encoding='utf-8') as f:
     CONFIG = yaml.load(f, Loader=yaml.Loader)  
+
+
+logging.basicConfig(filename=CONFIG['logging_file'], encoding='utf-8', level=logging.DEBUG)
 
 
 def load_keywords() -> dict:
@@ -46,17 +48,17 @@ def send_slack_message(filename: str):
     with open(filename, 'r', encoding='utf-8') as f:
         msg = f.read()
 
-    client = WebClient(token=os.environ.get("SLACK_BOT_TOKEN"))
+    client = WebClient(token='xoxb-1049193866486-6377676173957-O1yXDlGxkMe0x01jGhncgnyI')
     try:
-        response = client.chat_postMessage(channel=CONFIG['slack_channel'], text=msg, mrkdwn=True)
+        response = client.chat_postMessage(channel=CONFIG['slack_channel'], text=msg, mrkdwn=True, unfurl_links=False, unfurl_media=False)
     except SlackApiError as e:
         # You will get a SlackApiError if "ok" is False
         assert e.response["ok"] is False
         assert e.response["error"]  # str like 'invalid_auth', 'channel_not_found'
-        print(f"Got an error: {e.response['error']}")
+        logging.error(f"Got an error: {e.response['error']}")
         # Also receive a corresponding status_code
         assert isinstance(e.response.status_code, int)
-        print(f"Received a response status_code: {e.response.status_code}")
+        logging.error(f"Received a response status_code: {e.response.status_code}")
 
 
 class Paper:
@@ -145,8 +147,12 @@ def write_summary():
         "method": "with"
     }
     r = requests.get("https://arxiv.org/catchup", params=payload)
-    soup_yesterday = BeautifulSoup(r.text, features="html.parser").find('h2').findNext('dl')
-    
+    try:
+        soup_yesterday = BeautifulSoup(r.text, features="html.parser").find('h2').findNext('dl')
+    except AttributeError:
+        error_file = f'summaries/error_{yesterday.day}_{yesterday.month}_{yesterday.year}.html'
+        with open(error_file, 'w') as f: f.write(r.text)
+        logging.warning(f'No papers were found today, check html file saved at {error_file}')
     # Get the references of the paper and create a Paper object for each one of them. 
     # Then if the paper is relevant add an entry to the markdown list
     papers = []
@@ -166,13 +172,13 @@ def write_summary():
         f.write(md_text)
     
     logging.info(f"Found {len(papers)} relevant papers.")
-    logging.info(f"Markdown file was saved at {md_file}.md")
+    logging.info(f"Markdown file was saved at {md_file}")
 
     send_slack_message(md_file)
     return 0
 
 if __name__ == "__main__":
-    #write_summary()
+    write_summary()
     schedule.every().day.at(CONFIG['post_hour']).do(write_summary)
     while True:
         schedule.run_pending()

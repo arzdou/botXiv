@@ -5,3 +5,4 @@ threshold: 5
 keywords_file: 'U:\\Commun\\botXiv\\keywords.txt'
 slack_channel: '#testbot'
 post_hour: '08:30'
+logging_file: 'logging.log'
