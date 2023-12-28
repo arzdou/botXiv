@@ -1,7 +1,7 @@
 # -----------------------------------------------------------
-# Script that every day at 9:00 am will look for papers from 
-# the day before in ArXiv of the selected archive and create a 
-# markdown file. 
+# Script that every day at a specific time will look for papers 
+# from the same day in ArXiv of the selected archive, create a 
+# markdown file and send a Slack message with a digest. 
 #
 # The script will recognize relevant papers based on a list 
 # of authors and keywords with an associated weight, if the 
@@ -17,7 +17,7 @@ from bs4 import BeautifulSoup
 from time import sleep
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-import requests, yaml, csv, datetime, schedule, logging, os
+import requests, yaml, datetime, schedule, logging, os
 
 with open("config.yaml", 'r', encoding='utf-8') as f:
     CONFIG = yaml.load(f, Loader=yaml.Loader)  
@@ -31,24 +31,24 @@ def load_keywords() -> dict:
     filename = CONFIG["keywords_file"]
     try:
         with open(filename, 'r', encoding='utf-8') as f:
-            out = list(csv.reader(f, delimiter=","))
+            all_keywords = yaml.load(f, Loader=yaml.Loader)
     except Exception as e:
         logging.warning('Error when opening the keyword file: ', e)
         logging.info('Loading backup')
         with open('keywords.backup', 'r', encoding='utf-8') as f:
-            out = list(csv.reader(f, delimiter=","))
+            all_keywords = yaml.load(f, Loader=yaml.Loader)
     
     # After succesfully loading create a backup
     with open('keywords.backup', 'w', encoding='utf-8') as f:
-        f.write('\n'.join([', '.join(o) for o in out]))
-    return {o[0].lower(): int(o[1]) for o in out}
+        yaml.dump(all_keywords, f)
+    return all_keywords
 
 
 def send_slack_message(filename: str):
     with open(filename, 'r', encoding='utf-8') as f:
         msg = f.read()
 
-    client = WebClient(token='xoxb-1049193866486-6377676173957-O1yXDlGxkMe0x01jGhncgnyI')
+    client = WebClient(os.environ['SLACK_BOT_TOKEN'])
     try:
         response = client.chat_postMessage(channel=CONFIG['slack_channel'], text=msg, mrkdwn=True, unfurl_links=False, unfurl_media=False)
     except SlackApiError as e:
@@ -66,6 +66,7 @@ class Paper:
     Dataclass to manage the relevant information of each paper.
     All information is parsed from the input html data.
     """
+    AUTHORS = {}
     KEYWORDS = {}
 
     def __init__(self, reference: str, soup: BeautifulSoup) -> None:
@@ -78,10 +79,11 @@ class Paper:
 
         # Parse the title for keywords and the author for relevant authors
         self.kw_match = self.get_kw_matches(self.title, self.KEYWORDS)
-        self.author_match = self.get_kw_matches(' '.join(self.authors), self.KEYWORDS)
+        self.author_match = self.get_kw_matches(' '.join(self.authors), self.AUTHORS)
+        print(self.author_match)
         self.weight = 0
         for kw in self.kw_match: self.weight += self.KEYWORDS[kw]
-        for kw in self.author_match: self.weight += self.KEYWORDS[kw]
+        for kw in self.author_match: self.weight += self.AUTHORS[kw]
 
         # Paper is relevant if there is any match
         self.is_relevant = self.weight>=CONFIG["threshold"]
@@ -104,10 +106,10 @@ class Paper:
         return '\n\n'.join(md_list)
 
     def get_mrkdwn_text(self, abstract) -> str:
-        # Only print the number of authors if the list is larger than 10 authors
-        print_authors = self.authors
-        if len(self.authors)>10:
-            print_authors = self.authors[:9]
+        # Make a reduced list of authors
+        print_authors = self.authors[:9]
+        if len(self.authors)>9:
+            print_authors.append('...')
             print_authors.append(self.authors[-1])
 
         # Get a markdown summary of the paper
@@ -123,14 +125,16 @@ class Paper:
     def get_kw_matches(self, phrase: str, keyword_list: list) -> list:
         matches = []
         for keyword in keyword_list:
-            if keyword in phrase.lower():
+            if keyword.lower() in phrase.lower():
                 matches.append(keyword)
         return matches
 
 
 def write_summary():
     # Reload the keywords in case there is an update
-    Paper.KEYWORDS = load_keywords()
+    all_keywords = load_keywords()
+    Paper.KEYWORDS = all_keywords['keywords']
+    Paper.AUTHORS = all_keywords['authors']
 
     # Send a request to ArXiv for yesterdays papers
     yesterday = datetime.date.today() - datetime.timedelta(days=0)
@@ -153,6 +157,8 @@ def write_summary():
         error_file = f'summaries/error_{yesterday.day}_{yesterday.month}_{yesterday.year}.html'
         with open(error_file, 'w') as f: f.write(r.text)
         logging.warning(f'No papers were found today, check html file saved at {error_file}')
+        return 1
+    
     # Get the references of the paper and create a Paper object for each one of them. 
     # Then if the paper is relevant add an entry to the markdown list
     papers = []

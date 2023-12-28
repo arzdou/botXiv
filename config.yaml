@@ -2,7 +2,7 @@ archive: 'quant-ph'
 include_abstract: False
 threshold: 5
 
-keywords_file: 'U:\\Commun\\botXiv\\keywords.txt'
-slack_channel: '#testbot'
+keywords_file: 'keywords.yaml'
+slack_channel: '#journal_club'
 post_hour: '08:30'
 logging_file: 'logging.log'
